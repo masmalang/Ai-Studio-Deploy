@@ -1,0 +1,6 @@
+{
+  "name": "DroidCraft",
+  "description": "Build and deploy Android apps on the go using Gemini 3.5 Flash with real-time debugging and GitHub integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
