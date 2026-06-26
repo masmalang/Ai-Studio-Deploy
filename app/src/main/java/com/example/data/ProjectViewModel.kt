@@ -53,7 +53,13 @@ class ProjectViewModel(application: Application) : AndroidViewModel(application)
     private val _apiError = MutableStateFlow<String?>(null)
     val apiError: StateFlow<String?> = _apiError.asStateFlow()
 
+    private val _customApiKey = MutableStateFlow("")
+    val customApiKey: StateFlow<String> = _customApiKey.asStateFlow()
+
     init {
+        val sharedPrefs = application.getSharedPreferences("droidcraft_prefs", android.content.Context.MODE_PRIVATE)
+        _customApiKey.value = sharedPrefs.getString("custom_api_key", "") ?: ""
+
         val database = AppDatabase.getDatabase(application)
         repository = ProjectRepository(database.projectDao())
         allProjects = MutableStateFlow(emptyList()) // Will back with Room Flow
@@ -94,6 +100,12 @@ class ProjectViewModel(application: Application) : AndroidViewModel(application)
 
     fun selectFile(file: ProjectFileEntity) {
         _selectedFile.value = file
+    }
+
+    fun saveCustomApiKey(key: String) {
+        _customApiKey.value = key
+        val sharedPrefs = getApplication<Application>().getSharedPreferences("droidcraft_prefs", android.content.Context.MODE_PRIVATE)
+        sharedPrefs.edit().putString("custom_api_key", key).apply()
     }
 
     fun createProject(
@@ -246,10 +258,11 @@ val DarkColorScheme = darkColorScheme(
                     message = "Prompting Gemini 3.5 Flash for Kotlin/Compose source code generation..."
                 ))
 
-                // Get API Key from BuildConfig
-                val apiKey = com.example.BuildConfig.GEMINI_API_KEY
+                // Get API Key (use custom manually inserted key if present, otherwise fallback to BuildConfig)
+                val userKey = _customApiKey.value
+                val apiKey = if (userKey.isNotBlank()) userKey else com.example.BuildConfig.GEMINI_API_KEY
                 if (apiKey == "MY_GEMINI_API_KEY" || apiKey.isBlank()) {
-                    throw IllegalStateException("API Key is placeholder. Please configure GEMINI_API_KEY in the Secrets panel in AI Studio.")
+                    throw IllegalStateException("Gemini API Key is missing. Please enter your API Key in the settings at the top of the dashboard or configure GEMINI_API_KEY in the Secrets panel.")
                 }
 
                 val systemPrompt = """
@@ -319,9 +332,10 @@ val DarkColorScheme = darkColorScheme(
                     message = "Sending build error diagnostics to Gemini 3.5 Flash debugger..."
                 ))
 
-                val apiKey = com.example.BuildConfig.GEMINI_API_KEY
+                val userKey = _customApiKey.value
+                val apiKey = if (userKey.isNotBlank()) userKey else com.example.BuildConfig.GEMINI_API_KEY
                 if (apiKey == "MY_GEMINI_API_KEY" || apiKey.isBlank()) {
-                    throw IllegalStateException("API Key is missing or invalid. Check AI Studio secrets panel.")
+                    throw IllegalStateException("Gemini API Key is missing. Please enter your API Key in the settings at the top of the dashboard or configure GEMINI_API_KEY in the Secrets panel.")
                 }
 
                 val systemPrompt = """

@@ -33,6 +33,9 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -104,6 +107,7 @@ fun DroidCraftApp() {
     val isPushing by viewModel.isPushing.collectAsState()
     val debugExplanation by viewModel.debugExplanation.collectAsState()
     val apiError by viewModel.apiError.collectAsState()
+    val customApiKey by viewModel.customApiKey.collectAsState()
 
     var activeTab by remember { mutableStateOf("projects") }
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -152,6 +156,8 @@ fun DroidCraftApp() {
                     ProjectsScreen(
                         allProjects = allProjects,
                         selectedProject = selectedProject,
+                        customApiKey = customApiKey,
+                        onSaveApiKey = { viewModel.saveCustomApiKey(it) },
                         onProjectSelect = { project ->
                             viewModel.selectProject(project)
                             activeTab = "workspace"
@@ -207,6 +213,8 @@ fun DroidCraftApp() {
 fun ProjectsScreen(
     allProjects: List<ProjectEntity>,
     selectedProject: ProjectEntity?,
+    customApiKey: String,
+    onSaveApiKey: (String) -> Unit,
     onProjectSelect: (ProjectEntity) -> Unit,
     onProjectDelete: (ProjectEntity) -> Unit,
     onCreateClick: () -> Unit
@@ -264,7 +272,15 @@ fun ProjectsScreen(
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+
+                ApiKeySection(
+                    customApiKey = customApiKey,
+                    onSaveApiKey = onSaveApiKey,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
                     onClick = onCreateClick,
@@ -310,6 +326,12 @@ fun ProjectsScreen(
                         Icon(Icons.Default.Add, contentDescription = "Create Project")
                     }
                 }
+
+                ApiKeySection(
+                    customApiKey = customApiKey,
+                    onSaveApiKey = onSaveApiKey,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -1276,6 +1298,130 @@ fun CreateProjectDialog(
                     ) {
                         Text("PROVISION CONTAINER", fontWeight = FontWeight.Bold)
                     }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ApiKeySection(
+    customApiKey: String,
+    onSaveApiKey: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var keyInput by remember(customApiKey) { mutableStateOf(customApiKey) }
+    var isPasswordVisible by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = SophisticatedSurface),
+        border = BorderStroke(1.dp, SophisticatedBorder),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Security",
+                        tint = BluePrimary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "GEMINI API CONSOLE CONFIG",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = BluePrimary,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+                
+                Text(
+                    text = if (customApiKey.isNotBlank()) "ACTIVE & SECURED" else "REQUIRED",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (customApiKey.isNotBlank()) TerminalGreen else WarningGold,
+                    modifier = Modifier
+                        .background(
+                            if (customApiKey.isNotBlank()) TerminalGreen.copy(alpha = 0.15f) else WarningGold.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(4.dp)
+                        )
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Enter your custom Gemini API Key below. This key is saved locally and will be used inside DroidCraft's code compiler and debugger services.",
+                style = MaterialTheme.typography.bodySmall,
+                color = DarkGrayText,
+                lineHeight = 14.sp,
+                modifier = Modifier.padding(bottom = 10.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = keyInput,
+                    onValueChange = { keyInput = it },
+                    placeholder = { Text("AIzaSy...", color = DarkGrayText.copy(alpha = 0.5f)) },
+                    singleLine = true,
+                    textStyle = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 11.sp),
+                    visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        TextButton(
+                            onClick = { isPasswordVisible = !isPasswordVisible },
+                            contentPadding = PaddingValues(horizontal = 8.dp)
+                        ) {
+                            Text(
+                                text = if (isPasswordVisible) "HIDE" else "SHOW",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = BluePrimary
+                            )
+                        }
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("custom_api_key_input"),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = BluePrimary,
+                        unfocusedBorderColor = SophisticatedBorder,
+                        focusedLabelColor = BluePrimary
+                    )
+                )
+
+                Button(
+                    onClick = {
+                        onSaveApiKey(keyInput)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (keyInput != customApiKey) BluePrimary else AccentPillBg,
+                        contentColor = if (keyInput != customApiKey) DeepBlueText else CodeText
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    modifier = Modifier
+                        .height(56.dp)
+                        .testTag("save_api_key_button")
+                ) {
+                    Text(
+                        text = "SAVE",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
+                    )
                 }
             }
         }
